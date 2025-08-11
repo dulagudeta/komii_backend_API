@@ -1,25 +1,41 @@
-from django.shortcuts import render
+from rest_framework import viewsets, permissions
 
-# Create your views here.
-from rest_framework import generics, permissions
-from .models import Complaint
-from .serializers import ComplaintSerializer
-from .permissions import IsOwnerOrStaff
+from users import models
+from .models import Complaint, Category
+from .serializers import ComplaintSerializer, CategorySerializer
 
-class ComplaintListCreateView(generics.ListCreateAPIView):
+
+class IsOwnerOrAssignedOrAdmin(permissions.BasePermission):
+    """
+    Custom permission: 
+    - Users can view their own complaints
+    - Stakeholders can view assigned complaints
+    - Admins can view all
+    """
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_staff:
+            return True
+        return obj.reported_by == request.user or obj.assigned_to == request.user
+
+
+class ComplaintViewSet(viewsets.ModelViewSet):
     serializer_class = ComplaintSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAssignedOrAdmin]
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff or getattr(user, 'role', None) in ['staff', 'admin']:
-            return Complaint.objects.all()
-        return Complaint.objects.filter(user=user)
+        if user.is_staff:
+            return Complaint.objects.all().order_by('-created_at')
+        return Complaint.objects.filter(
+            models.Q(reported_by=user) | models.Q(assigned_to=user)
+        ).order_by('-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        # reported_by is automatically set in serializer
+        serializer.save()
 
-class ComplaintDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Complaint.objects.all()
-    serializer_class = ComplaintSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrStaff]
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]

@@ -35,7 +35,7 @@ urlpatterns = [
 
     # app endpoints 
     path('api/users/', include('users.urls')),       
-    path('api/compliants/', include('compliants.urls')),  
+    path('api/', include('compliants.urls')),  
 ]
 
 if settings.DEBUG:

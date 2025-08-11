@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -146,6 +147,12 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Token valid for 1 hour
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # Refresh for 7 days
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Komii API',

@@ -1,8 +1,10 @@
 # complaints/views.py
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import IsAdminUser
+from django.db.models import Count
 
 from .models import Complaint
 from .serializers import ComplaintSerializer
@@ -77,3 +79,23 @@ class ComplaintViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(complaint, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_report(request):
+    # Count complaints by status
+    status_counts = Complaint.objects.values('status').annotate(total=Count('status'))
+
+    # Count complaints by category
+    category_counts = Complaint.objects.values('category').annotate(total=Count('category'))
+
+    # Complaints per stakeholder
+    stakeholder_counts = Complaint.objects.values('assigned_to__username').annotate(total=Count('assigned_to'))
+
+    data = {
+        "status_counts": status_counts,
+        "category_counts": category_counts,
+        "stakeholder_counts": stakeholder_counts
+    }
+    return Response(data)

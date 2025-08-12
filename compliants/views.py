@@ -1,41 +1,79 @@
-from rest_framework import viewsets, permissions
+# complaints/views.py
+from django.contrib.auth import get_user_model
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
-from users import models
-from .models import Complaint, Category
-from .serializers import ComplaintSerializer, CategorySerializer
+from .models import Complaint
+from .serializers import ComplaintSerializer
 
-
-class IsOwnerOrAssignedOrAdmin(permissions.BasePermission):
-    """
-    Custom permission: 
-    - Users can view their own complaints
-    - Stakeholders can view assigned complaints
-    - Admins can view all
-    """
-    def has_object_permission(self, request, view, obj):
-        if request.user.is_staff:
-            return True
-        return obj.reported_by == request.user or obj.assigned_to == request.user
+User = get_user_model()
 
 
 class ComplaintViewSet(viewsets.ModelViewSet):
+    queryset = Complaint.objects.all().order_by('-created_at')
     serializer_class = ComplaintSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAssignedOrAdmin]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_staff:
-            return Complaint.objects.all().order_by('-created_at')
-        return Complaint.objects.filter(
-            models.Q(reported_by=user) | models.Q(assigned_to=user)
-        ).order_by('-created_at')
+    permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        # reported_by is automatically set in serializer
-        serializer.save()
+        serializer.save(reported_by=self.request.user)
 
+    @action(detail=True, methods=['post'], url_path='assign')
+    def assign(self, request, pk=None):
+        """
+        POST /api/complaints/{pk}/assign/
+        Body: {"stakeholder_id": <id>, "force": true/false (optional)}
+        Only admin/staff users should be allowed to call this.
+        """
+        complaint = self.get_object()
 
-class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+        # --- Permission check: only admin or staff-like roles can assign ---
+        # Be flexible with role names in case your User model uses 'staff' or 'stakeholder'
+        allowed_assigners = {
+            getattr(User, 'ROLE_ADMIN', 'admin'),
+            getattr(User, 'ROLE_STAFF', 'staff'),
+            getattr(User, 'ROLE_STAKEHOLDER', 'stakeholder'),
+        }
+        # allow Django superuser / is_staff too
+        if not (request.user.is_superuser or request.user.is_staff or getattr(request.user, 'role', None) in allowed_assigners):
+            return Response({'detail': 'You do not have permission to assign complaints.'}, status=status.HTTP_403_FORBIDDEN)
+
+        stakeholder_id = request.data.get('stakeholder_id')
+        if not stakeholder_id:
+            return Response({'detail': 'stakeholder_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            stakeholder = User.objects.get(pk=stakeholder_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'Stakeholder not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # --- Validate assignee is a stakeholder-like user ---
+        allowed_assignees = {
+            getattr(User, 'ROLE_STAFF', 'staff'),
+            getattr(User, 'ROLE_STAKEHOLDER', 'stakeholder'),
+            getattr(User, 'ROLE_ADMIN', 'admin'),
+        }
+        if getattr(stakeholder, 'role', None) not in allowed_assignees and not stakeholder.is_staff:
+            return Response({'detail': 'User is not a valid stakeholder.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Optional: require stakeholders to be approved if you use is_approved flag
+        if hasattr(stakeholder, 'is_approved') and not stakeholder.is_approved:
+            return Response({'detail': 'Stakeholder is not approved yet.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Optional: if complaint already assigned, require "force" to overwrite
+        force = bool(request.data.get('force', False))
+        if complaint.assigned_to and not force:
+            return Response({
+                'detail': 'Complaint already assigned.',
+                'assigned_to': complaint.assigned_to.id
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Assign and update status
+        complaint.assigned_to = stakeholder
+        # Only change status to in_progress if it's new (you can adjust logic)
+        if complaint.status == Complaint.STATUS_NEW:
+            complaint.status = Complaint.STATUS_IN_PROGRESS
+        complaint.save()
+
+        serializer = self.get_serializer(complaint, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)

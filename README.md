@@ -155,15 +155,5 @@ Example response from `GET /reports/admin/`:
     ]
 }
 ```
-
----
-
-## 🚀 Future Improvements
-
-* Advanced filtering & search
-* Pagination for large datasets
-* File uploads for additional complaint documents
-* Monthly trend reports for admin analytics
-
 ---
 Developed by [DULA](github.com/dulagudeta)

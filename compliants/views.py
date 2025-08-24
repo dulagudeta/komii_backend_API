@@ -28,13 +28,11 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         """
         complaint = self.get_object()
 
-        # --- Permission check: only admin or staff-like roles can assign ---
         allowed_assigners = {
             getattr(User, 'ROLE_ADMIN', 'admin'),
             getattr(User, 'ROLE_STAFF', 'staff'),
             getattr(User, 'ROLE_STAKEHOLDER', 'stakeholder'),
         }
-        # allow Django superuser / is_staff too
         if not (request.user.is_superuser or request.user.is_staff or getattr(request.user, 'role', None) in allowed_assigners):
             return Response({'detail': 'You do not have permission to assign complaints.'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -47,7 +45,7 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         except User.DoesNotExist:
             return Response({'detail': 'Stakeholder not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # --- Validate assignee is a stakeholder-like user ---
+        
         allowed_assignees = {
             getattr(User, 'ROLE_STAFF', 'staff'),
             getattr(User, 'ROLE_STAKEHOLDER', 'stakeholder'),
@@ -56,11 +54,11 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         if getattr(stakeholder, 'role', None) not in allowed_assignees and not stakeholder.is_staff:
             return Response({'detail': 'User is not a valid stakeholder.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Optional: require stakeholders to be approved if you use is_approved flag
+        
         if hasattr(stakeholder, 'is_approved') and not stakeholder.is_approved:
             return Response({'detail': 'Stakeholder is not approved yet.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Optional: if complaint already assigned, require "force" to overwrite
+        
         force = bool(request.data.get('force', False))
         if complaint.assigned_to and not force:
             return Response({
@@ -68,9 +66,9 @@ class ComplaintViewSet(viewsets.ModelViewSet):
                 'assigned_to': complaint.assigned_to.id
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Assign and update status
+       
         complaint.assigned_to = stakeholder
-        # Only change status to in_progress if it's new (you can adjust logic)
+        
         if complaint.status == Complaint.STATUS_NEW:
             complaint.status = Complaint.STATUS_IN_PROGRESS
         complaint.save()

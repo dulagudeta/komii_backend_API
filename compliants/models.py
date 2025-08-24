@@ -30,4 +30,5 @@ class ComplaintImage(models.Model):
     image = models.ImageField(upload_to='complaint_images/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
-
+def __str__(self):
+        return f"{self.title} - {self.get_status_display()}"

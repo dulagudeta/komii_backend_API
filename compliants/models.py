@@ -25,10 +25,13 @@ class Complaint(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"{self.title} - {self.get_status_display()}"
+    
 class ComplaintImage(models.Model):
     complaint = models.ForeignKey(Complaint, related_name='images', on_delete=models.CASCADE)
     image = models.ImageField(upload_to='complaint_images/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
-
-def __str__(self):
-        return f"{self.title} - {self.get_status_display()}"
+   
+    def __str__(self):
+        return f"Image for {self.complaint.title} uploaded at {self.uploaded_at}"

@@ -1,4 +1,3 @@
-# complaints/views.py
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
@@ -30,7 +29,6 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         complaint = self.get_object()
 
         # --- Permission check: only admin or staff-like roles can assign ---
-        # Be flexible with role names in case your User model uses 'staff' or 'stakeholder'
         allowed_assigners = {
             getattr(User, 'ROLE_ADMIN', 'admin'),
             getattr(User, 'ROLE_STAFF', 'staff'),

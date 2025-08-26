@@ -10,5 +10,9 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]  # Anyone can register
     serializer_class = RegisterSerializer
+class UserListView(generics.ListAPIView):
+    queryset = User.objects.all()
+    permission_classes = [AllowAny]  # Adjust permissions as needed
+    serializer_class = UserSerializer
 
 

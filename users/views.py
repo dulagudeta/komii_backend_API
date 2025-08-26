@@ -14,5 +14,9 @@ class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]  # Adjust permissions as needed
     serializer_class = UserSerializer
+class UserDetailView(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    permission_classes = [AllowAny]  # Adjust permissions as needed
+    serializer_class = UserSerializer
 
 

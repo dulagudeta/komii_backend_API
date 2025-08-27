@@ -4,7 +4,7 @@ from .models import Complaint
 class ComplaintSerializer(serializers.ModelSerializer):
     class Meta:
         model = Complaint
-        fields = "__all__"
+        fields = '__all__'
         read_only_fields = ['reported_by', 'created_at', 'updated_at']
 
     def update(self, instance, validated_data):

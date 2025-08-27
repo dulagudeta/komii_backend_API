@@ -8,7 +8,7 @@ class UserSerializer(serializers.ModelSerializer):
     """For returning user data."""
     class Meta:
         model = User
-        fields = '__all__'
+        fields = ['id', 'username', 'email', 'role']
 
 class RegisterSerializer(serializers.ModelSerializer):
     """For user registration."""

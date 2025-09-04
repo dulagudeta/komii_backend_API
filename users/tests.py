@@ -13,4 +13,9 @@ class CompliantTests(TestCase):
         response = self.client.get('/api/users/')
         self.assertEqual(response.status_code, 200)
     
-    
+    def user_can_view_user_detail(self):
+        # First, create a user to view
+        response = self.client.post('/api/register/', {
+            'username': 'testuser2',
+            'password': 'testpassword2'
+        })
